@@ -21,6 +21,11 @@ class AlarmRingService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            stopRinging()
+            return START_NOT_STICKY
+        }
+
         val soundUri = intent?.getStringExtra("sound_uri")
         val vibrate = intent?.getBooleanExtra("vibrate", true) ?: true
         val label = intent?.getStringExtra("label") ?: "Alarm"
@@ -77,6 +82,12 @@ class AlarmRingService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val stopIntent = Intent(this, AlarmRingService::class.java).apply { action = ACTION_STOP }
+        val stopPi = PendingIntent.getService(
+            this, 0, stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         return NotificationCompat.Builder(this, channelId)
             .setContentTitle("Alarm")
             .setContentText(label)
@@ -84,6 +95,7 @@ class AlarmRingService : Service() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setFullScreenIntent(fullScreenPi, true)
+            .addAction(android.R.drawable.ic_media_pause, "Stop", stopPi)
             .setOngoing(true)
             .build()
     }
@@ -105,9 +117,15 @@ class AlarmRingService : Service() {
 
     companion object {
         const val NOTIFICATION_ID = 42
+        const val ACTION_STOP = "com.arghya.alarmapp.ACTION_STOP"
 
         fun stop(context: Context) {
-            context.stopService(Intent(context, AlarmRingService::class.java))
+            val intent = Intent(context, AlarmRingService::class.java).apply { action = ACTION_STOP }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         }
     }
 }

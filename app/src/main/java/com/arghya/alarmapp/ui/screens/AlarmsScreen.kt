@@ -89,7 +89,7 @@ private fun AlarmCard(
     ) {
         Column(modifier = Modifier.weight(1f).clickable { onClick() }) {
             Text(
-                String.format("%02d:%02d", alarm.hour, alarm.minute),
+                formatTime12h(alarm.hour, alarm.minute),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
             )
@@ -132,6 +132,9 @@ private fun AlarmEditDialog(
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = specificDate)
     var showDatePicker by remember { mutableStateOf(false) }
 
+    val timePickerState = rememberTimePickerState(initialHour = hour, initialMinute = minute, is24Hour = false)
+    var showTimePicker by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "New Alarm" else "Edit Alarm") },
@@ -139,15 +142,8 @@ private fun AlarmEditDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(value = label, onValueChange = { label = it }, label = { Text("Label") })
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = hour.toString(), onValueChange = { hour = it.toIntOrNull()?.coerceIn(0, 23) ?: hour },
-                        label = { Text("Hour") }, modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = minute.toString(), onValueChange = { minute = it.toIntOrNull()?.coerceIn(0, 59) ?: minute },
-                        label = { Text("Minute") }, modifier = Modifier.weight(1f)
-                    )
+                OutlinedButton(onClick = { showTimePicker = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(formatTime12h(hour, minute), style = MaterialTheme.typography.titleMedium)
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -219,4 +215,34 @@ private fun AlarmEditDialog(
             DatePicker(state = datePickerState)
         }
     }
+
+    if (showTimePicker) {
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Set time") },
+            text = {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    TimePicker(state = timePickerState)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    hour = timePickerState.hour
+                    minute = timePickerState.minute
+                    showTimePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showTimePicker = false }) { Text("Cancel") } }
+        )
+    }
+}
+
+private fun formatTime12h(hour: Int, minute: Int): String {
+    val amPm = if (hour < 12) "AM" else "PM"
+    val h12 = when {
+        hour == 0 -> 12
+        hour > 12 -> hour - 12
+        else -> hour
+    }
+    return String.format("%d:%02d %s", h12, minute, amPm)
 }
